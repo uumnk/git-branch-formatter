@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GIT branch formatter</title>
+  <style>
+    body {
+      text-align: center;
+    }
+
+    body, input {
+      font-family: monospace;
+    }
+
+    form {
+      width: 500px;
+      margin: 0 auto;
+    }
+
+    input {
+      width: 80%;
+    }
+
+    #dynamicFormArea {
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+
+    #resultArea {
+      font-size: x-large;
+    }
+  </style>
+</head>
+<body>
+<h1>GIT branch formatter</h1>
+<form action="#" name="formatter" onsubmit="formatGitBranch(); return false;">
+  <label for="pattern">Pattern: </label>
+  <input type="text" name="pattern" id="pattern" value="feature/${prefix}${id}-${name}" oninput="createForm(); formatGitBranch();"/>
+  <div id="dynamicFormArea"></div>
+  <input type="submit" value="Generate">
+  <br>
+  <br>
+</form>
+<div id="resultArea"></div>
+<script>
+  function createForm() {
+    let dynamicFormAreaElement = document.getElementById("dynamicFormArea");
+    let pattern = document.getElementById("pattern").value;
+    let matches = pattern.matchAll(/\${([^}]+)}/g);
+    let dynamicFormElements = [];
+    for (const match of matches) {
+      let patternName = match[1];
+      dynamicFormElements.push(createLabelElement(patternName));
+      dynamicFormElements.push(createInputElement(patternName));
+      dynamicFormElements.push(document.createElement("br"));
+    }
+    dynamicFormAreaElement.replaceChildren(...dynamicFormElements);
+  }
+
+  function createInputElement(name) {
+    let inputElement = document.createElement("input");
+    inputElement.setAttribute("type", "text");
+    inputElement.setAttribute("name", name);
+    inputElement.setAttribute("id", name);
+    inputElement.setAttribute("oninput", "formatGitBranch();")
+    return inputElement;
+  }
+
+  function createLabelElement(name) {
+    let labelElement = document.createElement("label");
+    labelElement.setAttribute("for", name);
+    labelElement.appendChild(document.createTextNode(name + ": "));
+    return labelElement;
+  }
+
+  function formatGitBranch() {
+    let dynamicInputs = document.forms["formatter"].getElementsByTagName("input");
+    let result = document.getElementById("pattern").value;
+    for (const dynamicInput of dynamicInputs) {
+      if (dynamicInput.name === "pattern") {
+        continue;
+      }
+      result = result.replace("${" + dynamicInput.name + "}", formatForGit(dynamicInput.value));
+    }
+    document.getElementById("resultArea").innerHTML = result;
+  }
+
+  function removeDiacritics(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function formatForGit(str) {
+    // (Potentially) illegal git branch name characters: .~^:/\@?[]*()<>#${}
+
+    str = removeDiacritics(str);
+
+    str = str.trim() // trim the string
+      .replaceAll(" - ", "-") // remove spaces around dashes
+      .replaceAll(" / ", "-") // remove spaces around slashes and convert them to dashes
+      .replaceAll(" \\ ", "-") // remove spaces around backslashes and convert them to dashes
+      .replaceAll(", ", "_") // remove space after commas and convert it to underscores
+      .replaceAll(",", "_") // convert all remaining commas to underscores
+      .replaceAll("~", "-") // convert all tildes to dashes
+      .replaceAll("/", "-") // convert all remaining slashes to dashes
+      .replaceAll("\\", "-") // convert all remaining backslashes to dashes
+      .replaceAll("@", "_") // convert all at signs to underscores
+      .replaceAll("|", "_") // convert all pipes to underscores
+      .replaceAll(" ", "_") // convert all remaining spaces to underscores
+      .replace(/^\.+/g, "") // remove all dots at the beginning
+      .replace(/\.+$/g, "") // remove all dots at the end
+      .replaceAll(".", "_") // convert all remaining dots to underscores
+      .replace(/[^a-zA-Z0-9_-]/g, ""); // remove everything else except alphanumeric characters, underscores and dashes
+
+    return str;
+  }
+
+  createForm();
+  formatGitBranch();
+</script>
+</body>
+</html>
